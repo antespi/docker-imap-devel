@@ -38,12 +38,11 @@ ADD postfix /etc/postfix
 COPY dovecot/auth-passwdfile.inc /etc/dovecot/conf.d/
 COPY dovecot/??-*.conf /etc/dovecot/conf.d/
 
-ADD entrypoint /usr/local/bin/
 
-RUN chmod a+rx /usr/local/bin/* \
+RUN set -x; \
 
     # Configure Postfix
-    && /usr/sbin/postconf -e mydestination=localhost \
+    /usr/sbin/postconf -e mydestination=localhost \
     && /usr/sbin/postconf -e mynetworks='127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128' \
     && /usr/sbin/postconf -e virtual_maps='hash:/etc/postfix/virtual, regexp:/etc/postfix/virtual_regexp' \
     && /usr/sbin/postconf -e sender_canonical_maps=regexp:/etc/postfix/sender_canonical_regexp \
@@ -62,6 +61,9 @@ RUN chmod a+rx /usr/local/bin/* \
     && sed -i -e 's/include_try \/usr\/share\/dovecot\/protocols\.d/include_try \/etc\/dovecot\/protocols\.d/g' /etc/dovecot/dovecot.conf \
 
     && echo "Configured: OK"
+
+ADD entrypoint /usr/local/bin/
+RUN chmod a+rx /usr/local/bin/entrypoint
 
 VOLUME ["/var/mail"]
 EXPOSE 25 143 993
