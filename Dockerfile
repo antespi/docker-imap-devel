@@ -34,20 +34,17 @@ RUN set -x; \
     && echo "Installed: OK"
 
 ADD postfix /etc/postfix
-ADD entrypoint sendmail_test /usr/local/bin/
 
 COPY dovecot/auth-passwdfile.inc /etc/dovecot/conf.d/
 COPY dovecot/??-*.conf /etc/dovecot/conf.d/
 
+ADD entrypoint /usr/local/bin/
+
 RUN chmod a+rx /usr/local/bin/* \
 
     # Configure Postfix
-    && /usr/sbin/postconf -e myhostname=$HOST \
-    && /usr/sbin/postconf -e mydomain=$DOMAIN \
     && /usr/sbin/postconf -e mydestination=localhost \
     && /usr/sbin/postconf -e mynetworks='127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128' \
-    && /usr/sbin/postconf -e inet_interfaces=loopback-only \
-    && /usr/sbin/postconf -e smtp_helo_name=\$myhostname.\$mydomain \
     && /usr/sbin/postconf -e virtual_maps='hash:/etc/postfix/virtual, regexp:/etc/postfix/virtual_regexp' \
     && /usr/sbin/postconf -e sender_canonical_maps=regexp:/etc/postfix/sender_canonical_regexp \
     && /usr/sbin/postconf -e virtual_transport=lmtp:unix:private/dovecot-lmtp \

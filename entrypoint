@@ -91,6 +91,7 @@ if [ -n "$MAILNAME" ]; then
     if ! grep -q "$MAILNAME" /etc/postfix/vhost; then
         echo "$MAILNAME" >> /etc/postfix/vhost
     fi
+    /usr/sbin/postconf -e smtp_helo_name=\$myhostname.\$mydomain
 fi
 
 # Create user account
