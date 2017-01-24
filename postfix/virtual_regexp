@@ -1,0 +1,4 @@
+# virtual_regexp
+# This file will change email to address using regular expression
+#
+# /.+@.+/ catchall@example.com

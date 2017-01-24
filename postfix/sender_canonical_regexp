@@ -1,0 +1,8 @@
+# sender_canonical_regexp
+# This file will change email from address using regular expression
+#
+# Sample 1: Canonical domain (do not change from address)
+# /^(.+)@example.com$/ ${1}@example.com
+#
+# Sample 2: Non-canonical domain (change from address using canonical domain)
+# /^(.+)@(.+)$/ noreply+${1}+${2}@example.com

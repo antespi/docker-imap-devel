@@ -1,0 +1,125 @@
+#!/bin/bash
+
+set -e
+
+DEBUG_ADDRESS="debug@${MAILNAME}"
+DEBUG_PASS="debug"
+MAIL_LOCATION='/var/mail'
+POSTMASTER_ADDRESS="postmaster@${MAILNAME}"
+HOSTNAME="$(hostname -f)"
+
+_add_line() {
+    local check="$1"
+    local line="$2"
+    local file="$3"
+    if ! grep -q "$check" "$file"; then
+        echo "$line" >> "$file"
+    fi
+}
+
+_log() {
+    local logfile=/var/log/mail.log
+    if [ ! -f $logfile ]; then
+        touch $logfile
+        chown syslog:adm $logfile
+        chmod 640 $logfile
+    fi
+    echo "$(date '+%b %e %H:%I:%S') $(hostname) entrypoint[$$]: $1" >> $logfile
+}
+
+_stop() {
+    /etc/init.d/postfix stop
+    /etc/init.d/rsyslog stop
+    _log "Docker entrypoint stop"
+}
+
+_account_add() {
+    local login=$1
+    local user=$(echo ${login} | cut -d @ -f1)
+    local domain=$(echo ${login} | cut -d @ -f2)
+    local pass=$(doveadm pw -s SHA512-CRYPT -u $login -p $2)
+    
+    local uid=$(cat /etc/passwd | grep $MAIL_FS_USER | cut -d':' -f3)
+    local gid=$(cat /etc/passwd | grep $MAIL_FS_USER | cut -d':' -f4)
+    
+    if grep -q "${domain}/${user}" /etc/postfix/vmailbox; then
+        _log "User '$login' already configured"
+        return 0
+    fi
+    
+    echo "${login}:${pass}:${uid}:${gid}::${MAIL_FS_HOME}/${domain}/${user}::" >> /etc/dovecot/userdb
+    
+    if [ ! -d "${MAIL_LOCATION}/${domain}" ]; then
+        mkdir -p "${MAIL_LOCATION}/${domain}"
+        chown ${uid}:${gid} "${MAIL_LOCATION}/${domain}"
+    fi 
+    
+    if [ ! -d "${MAIL_LOCATION}/${domain}/${user}" ]; then
+        maildirmake.dovecot "${MAIL_LOCATION}/${domain}/${user}"
+        maildirmake.dovecot "${MAIL_LOCATION}/${domain}/${user}/.Sent"
+        maildirmake.dovecot "${MAIL_LOCATION}/${domain}/${user}/.Trash"
+        maildirmake.dovecot "${MAIL_LOCATION}/${domain}/${user}/.Drafts"
+        echo -e "INBOX\nSent\nTrash\nDrafts" >> "${MAIL_LOCATION}/${domain}/${user}/subscriptions"
+        touch "${MAIL_LOCATION}/${domain}/${user}/.Sent/maildirfolder"
+        chown -R ${uid}:${gid} "${MAIL_LOCATION}/${domain}/${user}"
+    fi
+
+    if ! grep -q "$domain" /etc/postfix/vhost; then
+        echo "$domain" >> /etc/postfix/vhost
+    fi
+    
+    echo "${login} ${domain}/${user}/" >> /etc/postfix/vmailbox
+    /usr/sbin/postmap /etc/postfix/vmailbox
+}
+
+trap "_stop" SIGINT SIGTERM SIGHUP
+
+_log "Docker entrypoint start"
+
+routes=$(ip route | grep -v default | cut -d' ' -f1)
+if [ -n "$routes" ]; then
+    /usr/sbin/postconf -e mynetworks="127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 $routes"
+    /usr/sbin/postconf -e inet_interfaces=all
+fi
+
+if [ -n "$HOSTNAME" ]; then 
+    /usr/sbin/postconf -e myhostname=$HOSTNAME
+fi
+if [ -n "$MAILNAME" ]; then
+    /usr/sbin/postconf -e mydomain=$MAILNAME
+    echo $MAILNAME > /etc/mailname; 
+    if ! grep -q "$MAILNAME" /etc/postfix/vhost; then
+        echo "$MAILNAME" >> /etc/postfix/vhost
+    fi
+fi
+
+# Create user account
+if [ -n "$MAIL_ADDRESS" ]; then
+    _account_add "$MAIL_ADDRESS" "$MAIL_PASS"
+    _add_line "$MAIL_ADDRESS" "/$MAIL_ADDRESS/ $MAIL_ADDRESS" /etc/postfix/virtual_regexp
+fi
+
+# Create debug account
+_account_add "$DEBUG_ADDRESS" "$DEBUG_PASS"
+
+# Force to send all emails to debug email address, no email to outside
+_add_line "$DEBUG_ADDRESS" "/.+@.+/ $DEBUG_ADDRESS" /etc/postfix/virtual_regexp
+/usr/sbin/postmap /etc/postfix/virtual_regexp
+
+# LMTP final configuration
+sed -i -e 's/^.*postmaster_address.*/postmaster_address = '${POSTMASTER_ADDRESS}'/g' /etc/dovecot/conf.d/15-lda.conf
+sed -i -e 's/^.*postmaster_address.*/  postmaster_address = '${POSTMASTER_ADDRESS}'/g' /etc/dovecot/conf.d/20-lmtp.conf
+
+
+_log "Docker entrypoint configured"
+
+# Start syslog daemon
+/etc/init.d/rsyslog start
+
+# Start Postfix daemon
+/etc/init.d/postfix start
+
+# Start Dovecot daemon
+/usr/sbin/dovecot -c /etc/dovecot/dovecot.conf
+
+$@ & wait ${!}

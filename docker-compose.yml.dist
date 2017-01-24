@@ -1,0 +1,17 @@
+version: '2'
+
+services:
+  imap:
+    # Uncomment this for build image in local
+    # build:
+    #   context: .
+    image: antespi/docker-imap:latest
+    container_name: imap
+    ports:
+    - "25:25"
+    - "143:143"
+    - "993:993"
+    environment:
+    - MAILNAME=example.org
+    - MAIL_ADDRESS=address@example.org
+    - MAIL_PASS=pass
