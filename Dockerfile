@@ -6,7 +6,7 @@ ENV MAILNAME=localdomain.test \
     MAIL_ADDRESS= \
     MAIL_PASS= \
     MAIL_FS_USER=docker \
-    MAIL_FS_HOME=/home/docker 
+    MAIL_FS_HOME=/home/docker
 
 RUN set -x; \
     apt-get update \
@@ -37,30 +37,6 @@ ADD postfix /etc/postfix
 
 COPY dovecot/auth-passwdfile.inc /etc/dovecot/conf.d/
 COPY dovecot/??-*.conf /etc/dovecot/conf.d/
-
-
-RUN set -x; \
-
-    # Configure Postfix
-    /usr/sbin/postconf -e mydestination=localhost \
-    && /usr/sbin/postconf -e mynetworks='127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128' \
-    && /usr/sbin/postconf -e virtual_maps='hash:/etc/postfix/virtual, regexp:/etc/postfix/virtual_regexp' \
-    && /usr/sbin/postconf -e sender_canonical_maps=regexp:/etc/postfix/sender_canonical_regexp \
-    && /usr/sbin/postconf -e virtual_transport=lmtp:unix:private/dovecot-lmtp \
-    && /usr/sbin/postconf -e mailbox_transport=lmtp:unix:private/dovecot-lmtp \
-    && /usr/sbin/postconf -e virtual_mailbox_domains=/etc/postfix/vhost \
-    && /usr/sbin/postconf -e virtual_mailbox_maps=hash:/etc/postfix/vmailbox \
-    && /usr/sbin/postconf compatibility_level=2 \
-    && /usr/sbin/postmap /etc/postfix/virtual_regexp \
-    && /usr/sbin/postmap /etc/postfix/virtual \
-    && /usr/sbin/postmap /etc/postfix/vmailbox \
-    && /usr/sbin/postmap /etc/postfix/sender_canonical_regexp \
-    
-    # Configures Dovecot
-    && cp -a /usr/share/dovecot/protocols.d /etc/dovecot/ \
-    && sed -i -e 's/include_try \/usr\/share\/dovecot\/protocols\.d/include_try \/etc\/dovecot\/protocols\.d/g' /etc/dovecot/dovecot.conf \
-
-    && echo "Configured: OK"
 
 ADD entrypoint /usr/local/bin/
 RUN chmod a+rx /usr/local/bin/entrypoint

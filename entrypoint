@@ -38,22 +38,22 @@ _account_add() {
     local user=$(echo ${login} | cut -d @ -f1)
     local domain=$(echo ${login} | cut -d @ -f2)
     local pass=$(doveadm pw -s SHA512-CRYPT -u $login -p $2)
-    
+
     local uid=$(cat /etc/passwd | grep $MAIL_FS_USER | cut -d':' -f3)
     local gid=$(cat /etc/passwd | grep $MAIL_FS_USER | cut -d':' -f4)
-    
+
     if grep -q "${domain}/${user}" /etc/postfix/vmailbox; then
         _log "User '$login' already configured"
         return 0
     fi
-    
+
     echo "${login}:${pass}:${uid}:${gid}::${MAIL_FS_HOME}/${domain}/${user}::" >> /etc/dovecot/userdb
-    
+
     if [ ! -d "${MAIL_LOCATION}/${domain}" ]; then
         mkdir -p "${MAIL_LOCATION}/${domain}"
         chown ${uid}:${gid} "${MAIL_LOCATION}/${domain}"
-    fi 
-    
+    fi
+
     if [ ! -d "${MAIL_LOCATION}/${domain}/${user}" ]; then
         maildirmake.dovecot "${MAIL_LOCATION}/${domain}/${user}"
         maildirmake.dovecot "${MAIL_LOCATION}/${domain}/${user}/.Sent"
@@ -67,7 +67,7 @@ _account_add() {
     if ! grep -q "$domain" /etc/postfix/vhost; then
         echo "$domain" >> /etc/postfix/vhost
     fi
-    
+
     echo "${login} ${domain}/${user}/" >> /etc/postfix/vmailbox
     /usr/sbin/postmap /etc/postfix/vmailbox
 }
@@ -76,23 +76,36 @@ trap "_stop" SIGINT SIGTERM SIGHUP
 
 _log "Docker entrypoint start"
 
+# Configuring Postfix
+
+if [ -n "$MAILNAME" ]; then
+    echo $MAILNAME > /etc/mailname;
+    /usr/sbin/postconf -e mydomain=$MAILNAME
+    if ! grep -q "$MAILNAME" /etc/postfix/vhost; then
+        echo "$MAILNAME" >> /etc/postfix/vhost
+    fi
+    /usr/sbin/postconf -e smtp_helo_name=\$myhostname.\$mydomain
+fi
+
+if [ -n "$HOSTNAME" ]; then
+    /usr/sbin/postconf -e myhostname=$HOSTNAME
+fi
+
 routes=$(ip route | grep -v default | cut -d' ' -f1)
 if [ -n "$routes" ]; then
     /usr/sbin/postconf -e mynetworks="127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 $routes"
     /usr/sbin/postconf -e inet_interfaces=all
 fi
 
-if [ -n "$HOSTNAME" ]; then 
-    /usr/sbin/postconf -e myhostname=$HOSTNAME
-fi
-if [ -n "$MAILNAME" ]; then
-    /usr/sbin/postconf -e mydomain=$MAILNAME
-    echo $MAILNAME > /etc/mailname; 
-    if ! grep -q "$MAILNAME" /etc/postfix/vhost; then
-        echo "$MAILNAME" >> /etc/postfix/vhost
-    fi
-    /usr/sbin/postconf -e smtp_helo_name=\$myhostname.\$mydomain
-fi
+/usr/sbin/postconf -e relay_host=localhost
+/usr/sbin/postconf -e mydestination=localhost
+/usr/sbin/postconf -e virtual_maps='hash:/etc/postfix/virtual, regexp:/etc/postfix/virtual_regexp'
+/usr/sbin/postconf -e sender_canonical_maps=regexp:/etc/postfix/sender_canonical_regexp
+/usr/sbin/postconf -e virtual_transport=lmtp:unix:private/dovecot-lmtp
+/usr/sbin/postconf -e mailbox_transport=lmtp:unix:private/dovecot-lmtp
+/usr/sbin/postconf -e virtual_mailbox_domains=/etc/postfix/vhost
+/usr/sbin/postconf -e virtual_mailbox_maps=hash:/etc/postfix/vmailbox
+/usr/sbin/postconf compatibility_level=2
 
 # Create user account
 if [ -n "$MAIL_ADDRESS" ]; then
@@ -105,9 +118,15 @@ _account_add "$DEBUG_ADDRESS" "$DEBUG_PASS"
 
 # Force to send all emails to debug email address, no email to outside
 _add_line "$DEBUG_ADDRESS" "/.+@.+/ $DEBUG_ADDRESS" /etc/postfix/virtual_regexp
-/usr/sbin/postmap /etc/postfix/virtual_regexp
 
-# LMTP final configuration
+/usr/sbin/postmap /etc/postfix/virtual_regexp
+/usr/sbin/postmap /etc/postfix/virtual
+/usr/sbin/postmap /etc/postfix/vmailbox
+/usr/sbin/postmap /etc/postfix/sender_canonical_regexp
+
+# Configuring Dovecot
+cp -a /usr/share/dovecot/protocols.d /etc/dovecot/ \
+sed -i -e 's/include_try \/usr\/share\/dovecot\/protocols\.d/include_try \/etc\/dovecot\/protocols\.d/g' /etc/dovecot/dovecot.conf \
 sed -i -e 's/^.*postmaster_address.*/postmaster_address = '${POSTMASTER_ADDRESS}'/g' /etc/dovecot/conf.d/15-lda.conf
 sed -i -e 's/^.*postmaster_address.*/  postmaster_address = '${POSTMASTER_ADDRESS}'/g' /etc/dovecot/conf.d/20-lmtp.conf
 
