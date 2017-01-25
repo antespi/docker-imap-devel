@@ -97,7 +97,7 @@ if [ -n "$routes" ]; then
     /usr/sbin/postconf -e inet_interfaces=all
 fi
 
-/usr/sbin/postconf -e relay_host=localhost
+/usr/sbin/postconf -e relayhost=localhost
 /usr/sbin/postconf -e mydestination=localhost
 /usr/sbin/postconf -e virtual_maps='hash:/etc/postfix/virtual, regexp:/etc/postfix/virtual_regexp'
 /usr/sbin/postconf -e sender_canonical_maps=regexp:/etc/postfix/sender_canonical_regexp
