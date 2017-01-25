@@ -5,7 +5,7 @@ services:
     # Uncomment this for build image in local
     # build:
     #   context: .
-    image: antespi/docker-imap:latest
+    image: antespi/docker-imap-devel:latest
     container_name: imap
     ports:
     - "25:25"

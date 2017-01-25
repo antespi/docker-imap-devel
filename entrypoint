@@ -125,8 +125,8 @@ _add_line "$DEBUG_ADDRESS" "/.+@.+/ $DEBUG_ADDRESS" /etc/postfix/virtual_regexp
 /usr/sbin/postmap /etc/postfix/sender_canonical_regexp
 
 # Configuring Dovecot
-cp -a /usr/share/dovecot/protocols.d /etc/dovecot/ \
-sed -i -e 's/include_try \/usr\/share\/dovecot\/protocols\.d/include_try \/etc\/dovecot\/protocols\.d/g' /etc/dovecot/dovecot.conf \
+cp -a /usr/share/dovecot/protocols.d /etc/dovecot/
+sed -i -e 's/include_try \/usr\/share\/dovecot\/protocols\.d/include_try \/etc\/dovecot\/protocols\.d/g' /etc/dovecot/dovecot.conf
 sed -i -e 's/^.*postmaster_address.*/postmaster_address = '${POSTMASTER_ADDRESS}'/g' /etc/dovecot/conf.d/15-lda.conf
 sed -i -e 's/^.*postmaster_address.*/  postmaster_address = '${POSTMASTER_ADDRESS}'/g' /etc/dovecot/conf.d/20-lmtp.conf
 
