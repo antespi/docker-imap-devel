@@ -22,8 +22,8 @@ RUN set -x; \
         iproute2 \
     && apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y \
     && rm -rf /var/cache/apt/archives/* /var/cache/apt/*.bin /var/lib/apt/lists/* \
-    && rm -rf /usr/share/locale/* && rm -rf /usr/share/man/* && rm -rf /usr/share/doc/* \
-    && touch /var/log/auth.log && update-locale \
+    && rm -rf /usr/share/man/* && rm -rf /usr/share/doc/* \
+    && touch /var/log/auth.log \
 
     # Create mail user
     && adduser $MAIL_FS_USER --home $MAIL_FS_HOME --shell /bin/false --disabled-password --gecos "" \
