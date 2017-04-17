@@ -30,6 +30,10 @@ _log() {
 _stop() {
     /etc/init.d/postfix stop
     /etc/init.d/rsyslog stop
+    if [ -f /var/run/dovecot/master.pid ]; then
+        kill -15 $(cat /var/run/dovecot/master.pid)
+        rm -rf /var/run/dovecot/master.pid
+    fi
     _log "Docker entrypoint stop"
 }
 
@@ -140,6 +144,7 @@ _log "Docker entrypoint configured"
 /etc/init.d/postfix start
 
 # Start Dovecot daemon
+rm -rf /var/run/dovecot/master.pid
 /usr/sbin/dovecot -c /etc/dovecot/dovecot.conf
 
 $@ & wait ${!}
