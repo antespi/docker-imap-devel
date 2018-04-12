@@ -8,11 +8,11 @@ This docker image is based on https://github.com/tomav/docker-mailserver
 If you look for a docker image for production environment, then go here:
 https://hub.docker.com/r/tvial/docker-mailserver/
 
-This image is even simpler than `tvial` docker image. Includes only 
-Postfix (SMTP) and Dovecot (IMAP) servers with one catchall mailbox 
-`debug@example.org` for all emails. So, it's very useful for debugging. Optionally, you can define another normal mailbox.
+This image is even simpler than `tvial` docker image. Includes only
+Postfix (SMTP) and Dovecot (IMAP) servers with one catchall mailbox
+`debug@localdomain.test` for all emails. So, it's very useful for debugging. Optionally, you can define another normal mailbox.
 
-Every email received via SMTP will be delivered locally to `debug@example.org`, so it's safe for testing a web application sending emails with a production list of emails.
+Every email received via SMTP will be delivered locally to `debug@localdomain.test`, so it's safe for testing a web application sending emails with a production list of emails.
 
 Using your favorite email client you can connect via IMAP protocol to see emails like original recipient would received them
 
@@ -33,8 +33,8 @@ Edit ```docker-compose.yml``` for set these environment variables:
 docker-compose up
 ```
 
-Configure your email client with these parameters and test it sending 
-any email to any email address 
+Configure your email client with these parameters and test it sending
+any email to any email address
 
 ### Catch all debug mailbox
 
@@ -42,7 +42,7 @@ any email to any email address
 - **IMAP server:** `imap`
 - **IMAP encryption:** `SSL`
 - **IMAP port:** `993`
-- **IMAP username:** `debug@example.org` (change `example.org` by your `MAILNAME`)
+- **IMAP username:** `debug@localdomain.test` (change `localdomain.test` by your `MAILNAME`)
 - **IMAP password:** `debug`
 
 - **SMTP server:** `imap`
@@ -57,7 +57,7 @@ any email to any email address
 - **IMAP server:** `imap`
 - **IMAP encryption:** `SSL`
 - **IMAP port:** `993`
-- **IMAP username:** `address@example.org` (change `address@example.org` by your `MAIL_ADDRESS`)
+- **IMAP username:** `address@localdomain.test` (change `address@localdomain.test` by your `MAIL_ADDRESS`)
 - **IMAP password:** `pass` (change `pass` by your `MAIL_PASS`)
 
 - **SMTP server:** `imap`
