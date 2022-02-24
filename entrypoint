@@ -128,6 +128,9 @@ _add_line "$DEBUG_ADDRESS" "/.+@.+/ $DEBUG_ADDRESS" /etc/postfix/virtual_regexp
 /usr/sbin/postmap /etc/postfix/vmailbox
 /usr/sbin/postmap /etc/postfix/sender_canonical_regexp
 
+# Disable TLS when using only port 25
+/usr/sbin/postconf -e smtpd_use_tls=no
+
 # Configuring Dovecot
 cp -a /usr/share/dovecot/protocols.d /etc/dovecot/
 sed -i -e 's/include_try \/usr\/share\/dovecot\/protocols\.d/include_try \/etc\/dovecot\/protocols\.d/g' /etc/dovecot/dovecot.conf
